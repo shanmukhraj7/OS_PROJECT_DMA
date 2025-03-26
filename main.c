@@ -295,7 +295,7 @@ int main() {
             case 5: // Exit without saving
                 return 0;
             default:
-                printf("Invalid choice! Please try again.\n"); // Default case
+                printf("Invalid choice! Please try again.\n");
         }
     }
 }
