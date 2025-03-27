@@ -1,12 +1,17 @@
 #include <stdio.h>
-#include <stdlib.h>
 #include <stdbool.h>
+#include <stdlib.h>
+#include <math.h>
+#include <limits.h>
+#include <float.h>
+#include <time.h>
+#include <assert.h>
 #include <string.h>
 
-#define MEMORY_SIZE 100
+#define MEMORY_SIZE 1000
 #define MAX_BLOCKS 20
 #define ALGORITHMS 4
-#define FRAG_THRESHOLD 5 // Blocks smaller than this are considered fragmented
+#define FRAG_THRESHOLD 5
 
 typedef struct {
     int start;
@@ -25,6 +30,7 @@ typedef struct {
 
 MemoryManager managers[ALGORITHMS];
 const char* algorithmNames[ALGORITHMS] = {"First Fit", "Best Fit", "Worst Fit", "Next Fit"};
+
 void initializeMemory(MemoryManager *m) {
     m->totalBlocks = 1;
     m->lastAlloc = 0;
@@ -98,37 +104,33 @@ int nextFit(MemoryManager *m, int size) {
     return -1;
 }
 
-void allocateMemory(MemoryManager *m, int size, int (*fitFunction)(MemoryManager*, int), const char* algoName) {
+void allocate(MemoryManager *m, int size, int (*fitFunction)(MemoryManager*, int), const char* algoName) {
     m->totalRequests++;
     int index = fitFunction(m, size);
     
     if (index == -1) {
-        printf("  [%s] Failed to allocate %d bytes (no suitable block)\n", algoName, size);
+        printf("  [%s] Failed to allocate %d bytes\n", algoName, size);
         m->failedAllocations++;
         return;
     }
 
-    // Split block if there's remaining space
     if (m->memory[index].size > size) {
         if (m->totalBlocks >= MAX_BLOCKS) {
-            printf("  [%s] Cannot split - maximum blocks reached\n", algoName);
+            printf("  [%s] Cannot split - max blocks reached\n", algoName);
             m->failedAllocations++;
             return;
         }
 
-        // Make space for new block
         for (int i = m->totalBlocks; i > index + 1; i--) {
             m->memory[i] = m->memory[i - 1];
         }
 
-        // Create new free block with remaining space
         m->memory[index + 1].start = m->memory[index].start + size;
         m->memory[index + 1].size = m->memory[index].size - size;
         m->memory[index + 1].allocated = false;
         m->totalBlocks++;
     }
 
-    // Allocate the block
     m->memory[index].size = size;
     m->memory[index].allocated = true;
     m->successfulAllocations++;
@@ -149,17 +151,14 @@ void deallocate(MemoryManager *m, int startAddress, const char* algoName) {
                    m->memory[i].start + m->memory[i].size - 1,
                    m->memory[i].size);
             
-            // Merge with previous free block if possible
             if (i > 0 && !m->memory[i-1].allocated) {
                 m->memory[i-1].size += m->memory[i].size;
                 for (int j = i; j < m->totalBlocks - 1; j++) {
                     m->memory[j] = m->memory[j + 1];
                 }
                 m->totalBlocks--;
-                i--; // Check the merged block again
+                i--;
             }
-            
-            // Merge with next free block if possible
             if (i < m->totalBlocks - 1 && !m->memory[i+1].allocated) {
                 m->memory[i].size += m->memory[i+1].size;
                 for (int j = i + 1; j < m->totalBlocks - 1; j++) {
@@ -183,11 +182,8 @@ void saveStatistics() {
     fprintf(file, "Algorithm,Allocated,Free,Fragmentation,SuccessRate\n");
 
     for (int i = 0; i < ALGORITHMS; i++) {
-        int allocated = 0, freeMemory = 0;
-        int fragmentedSize = 0;    // Total size of fragmented blocks
-        int totalFreeBlocks = 0;  // Count of free blocks
+        int allocated = 0, freeMemory = 0, fragmentedSize = 0, totalFreeBlocks = 0;
 
-        // Calculate memory usage and fragmentation
         for (int j = 0; j < managers[i].totalBlocks; j++) {
             if (managers[i].memory[j].allocated) {
                 allocated += managers[i].memory[j].size;
@@ -200,101 +196,160 @@ void saveStatistics() {
             }
         }
 
-        // Calculate fragmentation percentage
-        float fragmentationPercent = 0.0;
-        if (freeMemory > 0) {
-            // Percentage of free memory that is fragmented
-            fragmentationPercent = (fragmentedSize / (float)freeMemory) * 100;
-        }
-
+        float fragmentationPercent = (freeMemory > 0) ? 
+                                   (fragmentedSize / (float)freeMemory) * 100 : 0;
         float successRate = managers[i].totalRequests > 0 
                           ? (managers[i].successfulAllocations / (float)managers[i].totalRequests) * 100 
                           : 0;
 
         fprintf(file, "%s,%d,%d,%.2f,%.2f\n", 
                 algorithmNames[i], allocated, freeMemory, fragmentationPercent, successRate);
-
-        // Debug output
-        printf("\n%s Memory Analysis:", algorithmNames[i]);
-        printf("\n  Allocated: %d bytes", allocated);
-        printf("\n  Free: %d bytes in %d blocks", freeMemory, totalFreeBlocks);
-        printf("\n  Fragmented: %d bytes (%.2f%%)", fragmentedSize, fragmentationPercent);
-        printf("\n  Success Rate: %.2f%% (%d/%d)", 
-               successRate, 
-               managers[i].successfulAllocations, 
-               managers[i].totalRequests);
     }
 
     fclose(file);
-    printf("\n\nStatistics saved to memory_stats.txt\n");
+    printf("\nStatistics saved to memory_stats.txt\n");
+}
+
+void showCurrentStats() {
+    printf("\nCurrent Statistics:\n");
+    printf("Algorithm     Success Rate  Fragmentation\n");
+    printf("----------    ------------  ------------\n");
+    
+    for (int i = 0; i < ALGORITHMS; i++) {
+        int freeMemory = 0, fragmentedSize = 0;
+        
+        for (int j = 0; j < managers[i].totalBlocks; j++) {
+            if (!managers[i].memory[j].allocated) {
+                freeMemory += managers[i].memory[j].size;
+                if (managers[i].memory[j].size <= FRAG_THRESHOLD) {
+                    fragmentedSize += managers[i].memory[j].size;
+                }
+            }
+        }
+
+        float fragmentation = (freeMemory > 0) ? 
+                            (fragmentedSize / (float)freeMemory) * 100 : 0;
+        float successRate = managers[i].totalRequests > 0 
+                           ? (managers[i].successfulAllocations / (float)managers[i].totalRequests) * 100 
+                           : 0;
+
+        printf("%-10s    %6.1f%%       %6.1f%%\n", 
+               algorithmNames[i], successRate, fragmentation);
+    }
 }
 
 void printMenu() {
-    printf("\nMemory Allocation Simulator Menu\n");
-    printf("1. Allocate memory\n");
-    printf("2. Deallocate memory\n");
-    printf("3. Display memory state\n");
-    printf("4. Save statistics and exit\n");
-    printf("5. Exit without saving\n");
-    printf("Enter your choice: ");
+    printf("\nMemory Allocation Simulator\n");
+    printf("1. Allocate memory (all algorithms)\n");
+    printf("2. Allocate memory (specific algorithm)\n");
+    printf("3. Deallocate memory (all algorithms)\n");
+    printf("4. Deallocate memory (specific algorithm)\n");
+    printf("5. Display memory state\n");
+    printf("6. Show current statistics\n");
+    printf("7. Save statistics and generate graphs\n");
+    printf("8. Exit\n");
+    printf("Choose option: ");
+}
+
+void printAlgorithmMenu() {
+    printf("\nSelect algorithm:\n");
+    for (int i = 0; i < ALGORITHMS; i++) {
+        printf("%d. %s\n", i+1, algorithmNames[i]);
+    }
+    printf("Choose option: ");
 }
 
 int main() {
-    // Initialize all memory managers
+    // Initialize all managers
     for (int i = 0; i < ALGORITHMS; i++) {
         initializeMemory(&managers[i]);
     }
 
-    int choice;
+    int choice, algoChoice, size, address;
     while (1) {
         printMenu();
         scanf("%d", &choice);
 
         switch (choice) {
-            case 1: { // Allocate memory
-                int size;
+            case 1: // Allocate in all algorithms
                 printf("Enter size to allocate: ");
                 scanf("%d", &size);
-                
                 if (size <= 0 || size > MEMORY_SIZE) {
-                    printf("Invalid size! Must be between 1 and %d\n", MEMORY_SIZE);
+                    printf("Invalid size! Must be 1-%d\n", MEMORY_SIZE);
                     break;
                 }
-
-                // Apply allocation to all algorithms
                 for (int i = 0; i < ALGORITHMS; i++) {
                     switch (i) {
-                        case 0: allocateMemory(&managers[i], size, firstFit, algorithmNames[i]); break;
-                        case 1: allocateMemory(&managers[i], size, bestFit, algorithmNames[i]); break;
-                        case 2: allocateMemory(&managers[i], size, worstFit, algorithmNames[i]); break;
-                        case 3: allocateMemory(&managers[i], size, nextFit, algorithmNames[i]); break;
+                        case 0: allocate(&managers[i], size, firstFit, algorithmNames[i]); break;
+                        case 1: allocate(&managers[i], size, bestFit, algorithmNames[i]); break;
+                        case 2: allocate(&managers[i], size, worstFit, algorithmNames[i]); break;
+                        case 3: allocate(&managers[i], size, nextFit, algorithmNames[i]); break;
                     }
                 }
                 break;
-            }
-            case 2: { // Deallocate memory
-                int address;
+                
+            case 2: // Allocate in specific algorithm
+                printAlgorithmMenu();
+                scanf("%d", &algoChoice);
+                if (algoChoice < 1 || algoChoice > ALGORITHMS) {
+                    printf("Invalid choice!\n");
+                    break;
+                }
+                printf("Enter size to allocate: ");
+                scanf("%d", &size);
+                if (size <= 0 || size > MEMORY_SIZE) {
+                    printf("Invalid size! Must be 1-%d\n", MEMORY_SIZE);
+                    break;
+                }
+                switch (algoChoice-1) {
+                    case 0: allocate(&managers[0], size, firstFit, algorithmNames[0]); break;
+                    case 1: allocate(&managers[1], size, bestFit, algorithmNames[1]); break;
+                    case 2: allocate(&managers[2], size, worstFit, algorithmNames[2]); break;
+                    case 3: allocate(&managers[3], size, nextFit, algorithmNames[3]); break;
+                }
+                break;
+                
+            case 3: // Deallocate in all algorithms
                 printf("Enter starting address to free: ");
                 scanf("%d", &address);
-                
                 for (int i = 0; i < ALGORITHMS; i++) {
                     deallocate(&managers[i], address, algorithmNames[i]);
                 }
                 break;
-            }
-            case 3: { // Display memory state
+                
+            case 4: // Deallocate in specific algorithm
+                printAlgorithmMenu();
+                scanf("%d", &algoChoice);
+                if (algoChoice < 1 || algoChoice > ALGORITHMS) {
+                    printf("Invalid choice!\n");
+                    break;
+                }
+                printf("Enter starting address to free: ");
+                scanf("%d", &address);
+                deallocate(&managers[algoChoice-1], address, algorithmNames[algoChoice-1]);
+                break;
+                
+            case 5: // Display memory
                 for (int i = 0; i < ALGORITHMS; i++) {
                     displayMemory(&managers[i], algorithmNames[i]);
                 }
                 break;
-            }
-            case 4: // Save and exit
+                
+            case 6: // Show statistics
+                showCurrentStats();
+                break;
+                
+            case 7: // Save and generate graphs
                 saveStatistics();
+                // Call Python visualization script
+                system("python visualize.py");
+                break;
+                
+            case 8: // Exit
                 return 0;
-            case 5: // Exit without saving
-                return 0;
+                
             default:
-                printf("Invalid choice! Please try again.\n");
+                printf("Invalid choice!\n");
         }
     }
 }
