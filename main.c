@@ -1,11 +1,6 @@
 #include <stdio.h>
 #include <stdbool.h>
 #include <stdlib.h>
-#include <math.h>
-#include <limits.h>
-#include <float.h>
-#include <time.h>
-#include <assert.h>
 #include <string.h>
 
 #define MEMORY_SIZE 1000
