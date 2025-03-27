@@ -4,7 +4,7 @@ import csv
 
 def visualize_results():
     # Algorithm names and colors for consistency
-    algorithm_names = ["First Fit", "Best Fit", "Worst Fit", "Next Fit"]
+    algorithmNames = ["First Fit", "Best Fit", "Worst Fit", "Next Fit"]
     colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728']
     
     # Initialize data lists
@@ -40,7 +40,7 @@ def visualize_results():
 
         # Plot 1: Fragmentation Comparison
         ax1 = plt.subplot(2, 2, 1)
-        bars = ax1.bar(algorithm_names, metrics['fragmentation'], color=colors)
+        bars = ax1.bar(algorithmNames, metrics['fragmentation'], color=colors)
         ax1.set_title("External Fragmentation Comparison", pad=10)
         ax1.set_ylabel("Fragmentation (%)")
         ax1.set_ylim(0, min(100, max(metrics['fragmentation']) * 1.2))
@@ -54,7 +54,7 @@ def visualize_results():
 
         # Plot 2: Success Rate Comparison
         ax2 = plt.subplot(2, 2, 2)
-        bars = ax2.bar(algorithm_names, metrics['success_rate'], color=colors)
+        bars = ax2.bar(algorithmNames, metrics['success_rate'], color=colors)
         ax2.set_title("Allocation Success Rate", pad=10)
         ax2.set_ylabel("Success Rate (%)")
         ax2.set_ylim(0, 110)  # Allow space for value labels
@@ -68,7 +68,7 @@ def visualize_results():
         # Plot 3: Memory Usage
         ax3 = plt.subplot(2, 2, 3)
         width = 0.35
-        x = np.arange(len(algorithm_names))
+        x = np.arange(len(algorithmNames))
         
         allocated_bars = ax3.bar(x - width/2, metrics['allocated'], width, 
                                label='Allocated', color=colors, alpha=0.8)
@@ -78,23 +78,23 @@ def visualize_results():
         ax3.set_title("Memory Usage Distribution", pad=10)
         ax3.set_ylabel("Memory (bytes)")
         ax3.set_xticks(x)
-        ax3.set_xticklabels(algorithm_names)
+        ax3.set_xticklabels(algorithmNames)
         ax3.legend(loc='upper right')
         ax3.grid(axis='y', linestyle='--', alpha=0.7)
 
         # Plot 4: Combined Performance Score
         ax4 = plt.subplot(2, 2, 4)
         # Calculate combined score (higher is better)
-        combined_score = []
+        combinedScore = []
         for frag, success in zip(metrics['fragmentation'], metrics['success_rate']):
             # Weighted combination (adjust weights as needed)
-            combined_score.append((100 - frag) * 0.4 + success * 0.6)
+            combinedScore.append((100 - frag) * 0.4 + success * 0.6)
         
-        bars = ax4.bar(algorithm_names, combined_score, color=colors)
-        best_idx = np.argmax(combined_score)
-        bars[best_idx].set_color('#9467bd')  # Highlight best performer
-        bars[best_idx].set_edgecolor('black')
-        bars[best_idx].set_linewidth(2)
+        bars = ax4.bar(algorithmNames, combinedScore, color=colors)
+        bestIndex = np.argmax(combinedScore)
+        bars[bestIndex].set_color('#9467bd')  # Highlight best performer
+        bars[bestIndex].set_edgecolor('black')
+        bars[bestIndex].set_linewidth(2)
         
         ax4.set_title("Combined Performance Score\n(Lower Fragmentation + Higher Success Rate)", pad=10)
         ax4.set_ylabel("Score (0-100)")
@@ -111,13 +111,13 @@ def visualize_results():
 
         # Print analysis results
         print("\n=== Memory Allocation Algorithm Analysis ===")
-        print(f"🏆 Best Performer: {algorithm_names[best_idx]}")
-        print(f"   - Fragmentation: {metrics['fragmentation'][best_idx]:.1f}%")
-        print(f"   - Success Rate: {metrics['success_rate'][best_idx]:.1f}%")
-        print(f"   - Combined Score: {combined_score[best_idx]:.1f}")
+        print(f"🏆 Best Performer: {algorithmNames[bestIndex]}")
+        print(f"   - Fragmentation: {metrics['fragmentation'][bestIndex]:.1f}%")
+        print(f"   - Success Rate: {metrics['success_rate'][bestIndex]:.1f}%")
+        print(f"   - Combined Score: {combinedScore[bestIndex]:.1f}")
         
         print("\n🔍 Detailed Metrics:")
-        for i, name in enumerate(algorithm_names):
+        for i, name in enumerate(algorithmNames):
             print(f"\n{name}:")
             print(f"  - Allocated: {metrics['allocated'][i]} bytes")
             print(f"  - Free: {metrics['free'][i]} bytes")
