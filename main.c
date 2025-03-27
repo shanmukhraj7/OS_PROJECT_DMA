@@ -25,7 +25,7 @@ typedef struct {
 
 MemoryManager managers[ALGORITHMS];
 const char* algorithmNames[ALGORITHMS] = {"First Fit", "Best Fit", "Worst Fit", "Next Fit"};
-void initialize_memory(MemoryManager *m) {
+void initializeMemory(MemoryManager *m) {
     m->totalBlocks = 1;
     m->lastAlloc = 0;
     m->successfulAllocations = 0;
@@ -36,7 +36,7 @@ void initialize_memory(MemoryManager *m) {
     m->memory[0].allocated = false;
 }
 
-void display_memory(MemoryManager *m, const char* algoName) {
+void displayMemory(MemoryManager *m, const char* algoName) {
     printf("\n=== %s Memory Layout ===\n", algoName);
     printf("Start End  Size    Status\n");
     printf("----- ---  ----    ------\n");
@@ -49,7 +49,7 @@ void display_memory(MemoryManager *m, const char* algoName) {
     }
 }
 
-int first_fit(MemoryManager *m, int size) {
+int firstFit(MemoryManager *m, int size) {
     for (int i = 0; i < m->totalBlocks; i++) {
         if (!m->memory[i].allocated && m->memory[i].size >= size) {
             return i;
@@ -58,7 +58,7 @@ int first_fit(MemoryManager *m, int size) {
     return -1;
 }
 
-int best_fit(MemoryManager *m, int size) {
+int bestFit(MemoryManager *m, int size) {
     int bestIndex = -1;
     int minSize = MEMORY_SIZE + 1;
     for (int i = 0; i < m->totalBlocks; i++) {
@@ -70,7 +70,7 @@ int best_fit(MemoryManager *m, int size) {
     return bestIndex;
 }
 
-int worst_fit(MemoryManager *m, int size) {
+int worstFit(MemoryManager *m, int size) {
     int worstIndex = -1;
     int maxSize = -1;
     for (int i = 0; i < m->totalBlocks; i++) {
@@ -82,7 +82,7 @@ int worst_fit(MemoryManager *m, int size) {
     return worstIndex;
 }
 
-int next_fit(MemoryManager *m, int size) {
+int nextFit(MemoryManager *m, int size) {
     for (int i = m->lastAlloc; i < m->totalBlocks; i++) {
         if (!m->memory[i].allocated && m->memory[i].size >= size) {
             m->lastAlloc = i;
@@ -98,7 +98,7 @@ int next_fit(MemoryManager *m, int size) {
     return -1;
 }
 
-void allocate_memory(MemoryManager *m, int size, int (*fitFunction)(MemoryManager*, int), const char* algoName) {
+void allocateMemory(MemoryManager *m, int size, int (*fitFunction)(MemoryManager*, int), const char* algoName) {
     m->totalRequests++;
     int index = fitFunction(m, size);
     
@@ -173,7 +173,7 @@ void deallocate(MemoryManager *m, int startAddress, const char* algoName) {
     printf("  [%s] No allocated block found at address %d\n", algoName, startAddress);
 }
 
-void save_statistics() {
+void saveStatistics() {
     FILE *file = fopen("memory_stats.txt", "w");
     if (!file) {
         printf("Error opening file!\n");
@@ -229,7 +229,7 @@ void save_statistics() {
     printf("\n\nStatistics saved to memory_stats.txt\n");
 }
 
-void print_menu() {
+void printMenu() {
     printf("\nMemory Allocation Simulator Menu\n");
     printf("1. Allocate memory\n");
     printf("2. Deallocate memory\n");
@@ -242,12 +242,12 @@ void print_menu() {
 int main() {
     // Initialize all memory managers
     for (int i = 0; i < ALGORITHMS; i++) {
-        initialize_memory(&managers[i]);
+        initializeMemory(&managers[i]);
     }
 
     int choice;
     while (1) {
-        print_menu();
+        printMenu();
         scanf("%d", &choice);
 
         switch (choice) {
@@ -264,10 +264,10 @@ int main() {
                 // Apply allocation to all algorithms
                 for (int i = 0; i < ALGORITHMS; i++) {
                     switch (i) {
-                        case 0: allocate_memory(&managers[i], size, first_fit, algorithmNames[i]); break;
-                        case 1: allocate_memory(&managers[i], size, best_fit, algorithmNames[i]); break;
-                        case 2: allocate_memory(&managers[i], size, worst_fit, algorithmNames[i]); break;
-                        case 3: allocate_memory(&managers[i], size, next_fit, algorithmNames[i]); break;
+                        case 0: allocateMemory(&managers[i], size, firstFit, algorithmNames[i]); break;
+                        case 1: allocateMemory(&managers[i], size, bestFit, algorithmNames[i]); break;
+                        case 2: allocateMemory(&managers[i], size, worstFit, algorithmNames[i]); break;
+                        case 3: allocateMemory(&managers[i], size, nextFit, algorithmNames[i]); break;
                     }
                 }
                 break;
@@ -284,12 +284,12 @@ int main() {
             }
             case 3: { // Display memory state
                 for (int i = 0; i < ALGORITHMS; i++) {
-                    display_memory(&managers[i], algorithmNames[i]);
+                    displayMemory(&managers[i], algorithmNames[i]);
                 }
                 break;
             }
             case 4: // Save and exit
-                save_statistics();
+                saveStatistics();
                 return 0;
             case 5: // Exit without saving
                 return 0;
